@@ -1,0 +1,49 @@
+{
+  "name": "wungus",
+  "version": "0.0.0",
+  "description": "wungus",
+  "main": "build/src/server.js",
+  "type": "module",
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "test": "node --test test/*.js",
+    "fix": "biome check --write .",
+    "lint": "biome check .",
+    "prestart": "npm run build",
+    "start": "node build/src/server.js",
+    "create-embeddings": "node build/src/ingest/createEmbeddings.js",
+    "store-embeddings": "node build/src/ingest/storeEmbeddings.js",
+    "create-pinecone-index": "node build/src/ingest/createPineconeIndex.js",
+    "download-devsite": "node build/src/ingest/downloadDevsite.js",
+    "download-supportsite": "node build/src/ingest/downloadSupportSite.js"
+  },
+  "keywords": [],
+  "author": "Justin Beckwith <justin.beckwith@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@pinecone-database/pinecone": "^4.1.0",
+    "cheerio": "^1.0.0",
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
+    "inquirer": "^12.3.3",
+    "js-yaml": "^4.1.0",
+    "openai": "^4.82.0",
+    "puppeteer": "^24.2.0",
+    "remark": "^15.0.1",
+    "remark-mdx": "^3.1.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/cheerio": "^0.22.35",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.13.0",
+    "@types/yamljs": "^0.2.34",
+    "typescript": "^5.7.3"
+  }
+}

@@ -5,6 +5,7 @@ import {
 	Events,
 	GatewayIntentBits,
 	type Message,
+	MessageFlags,
 } from 'discord.js';
 import { OpenAI } from 'openai';
 import { config } from './config.js';
@@ -43,7 +44,10 @@ client.on(Events.MessageCreate, async (message: Message) => {
 	}
 
 	const reply = await respondToQuestion(message.content);
-	await message.reply(reply);
+	await message.reply({
+		content: reply,
+		flags: MessageFlags.SuppressEmbeds,
+	});
 });
 
 // Log in to Discord with your client's token
@@ -51,8 +55,12 @@ client.login(config.DISCORD_TOKEN);
 
 async function respondToQuestion(question: string) {
 	const retrievedDocs = await queryPinecone(question);
-	console.log(retrievedDocs);
-
+	const context = retrievedDocs.map((match) => match.metadata?.text).join('\n');
+	const urls = retrievedDocs
+		.filter((doc) => !!doc.metadata?.url)
+		.map((doc) => `-# - ${doc.metadata?.url}`)
+		.join('\n');
+	console.log(urls);
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4',
 		messages: [
@@ -63,12 +71,12 @@ async function respondToQuestion(question: string) {
 			},
 			{
 				role: 'user',
-				content: `Based on the following information:\n\n${retrievedDocs}\n\nAnswer this query: ${question}`,
+				content: `Based on the following information:\n\n${context}\n\nAnswer this query: ${question}`,
 			},
 		],
 	});
-
-	return response.choices[0].message.content || '';
+	const answer = `${response.choices[0].message.content || ''}\n\nTo learn more, read:\n${urls}`;
+	return answer;
 }
 
 async function getEmbedding(text: string) {
@@ -89,5 +97,5 @@ async function queryPinecone(userQuery: string) {
 		includeMetadata: true,
 	});
 	console.log(queryResponse);
-	return queryResponse.matches.map((match) => match.metadata?.text).join('\n');
+	return queryResponse.matches;
 }

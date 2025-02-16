@@ -49,7 +49,7 @@ export class SiteCrawler {
 
 		await browser.close();
 
-		const filename = `chunks-${randomUUID()}.json`;
+		const filename = `tmp/chunks-${randomUUID()}.json`;
 		await fs.writeFile(filename, JSON.stringify(this.data, null, 2));
 		console.log(`Chunks saved to ${filename}`);
 	}
@@ -66,13 +66,15 @@ export class SiteCrawler {
 		contentSelector?: string,
 	): Promise<{ text: string; links: string[] }> {
 		const page = await browser.newPage();
-		console.log(url);
+		console.log(`Fetching page content: ${url}`);
+		console.log(`Content Selector: ${contentSelector}`);
 
 		try {
 			await page.goto(url, { waitUntil: 'networkidle2' });
 
 			// Extract page text (removes HTML tags)
 			const text = await page.evaluate((containerId) => {
+				console.log(`Container: ${containerId}`);
 				function cleanText(el: Element) {
 					return (el as HTMLElement).innerText.trim();
 				}
@@ -87,7 +89,7 @@ export class SiteCrawler {
 						.join('\n');
 				}
 				const content = [];
-				const elems = document.querySelectorAll(`#${containerId} *`);
+				const elems = document.querySelectorAll(`${containerId} *`);
 				console.log(elems);
 				for (const el of elems) {
 					const tagName = el.tagName.toLowerCase();
@@ -132,8 +134,8 @@ export class SiteCrawler {
 			const urlObj = new URL(link);
 			urlObj.hash = ''; // Remove hash to ensure unique URLs
 			urlObj.search = ''; // Remove search params to ensure unique URLs
+			console.log(`maybe queue: ${urlObj.href}`);
 			if (
-				urlObj.hostname === baseDomain &&
 				this.isValidDomain(urlObj.href) &&
 				!this.visitedUrls.has(urlObj.href)
 			) {

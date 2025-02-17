@@ -39,18 +39,25 @@ client.on(Events.MessageCreate, async (message: Message) => {
 	}
 	console.log(`Received message: ${message.content}`);
 
-	if (message.channel.type === ChannelType.GuildText) {
-		await message.channel.sendTyping();
-	}
+	let typing = true;
+	const typingLoop = async () => {
+		while (typing) {
+			if ('sendTyping' in message.channel) {
+				await message.channel.sendTyping();
+				await new Promise((resolve) => setTimeout(resolve, 5000));
+			}
+		}
+	};
+	typingLoop();
 
 	const reply = await respondToQuestion(message.content);
 	await message.reply({
 		content: reply,
 		flags: MessageFlags.SuppressEmbeds,
 	});
+	typing = false;
 });
 
-// Log in to Discord with your client's token
 client.login(config.DISCORD_TOKEN);
 
 async function respondToQuestion(question: string) {

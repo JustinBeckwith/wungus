@@ -1,6 +1,4 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
-import YAML from 'yamljs';
 
 interface OpenAPISpec {
 	paths: Record<string, unknown>;

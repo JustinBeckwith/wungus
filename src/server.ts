@@ -6,7 +6,6 @@ import {
 	type Message,
 	MessageFlags,
 } from 'discord.js';
-import fetch from 'node-fetch';
 import { OpenAI } from 'openai';
 import { config } from './config.js';
 import { FixedQueue } from './fixedQueue.js';

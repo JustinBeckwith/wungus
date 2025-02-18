@@ -1,4 +1,5 @@
 import { Pinecone } from '@pinecone-database/pinecone';
+import fetch from 'node-fetch';
 import {
 	Client,
 	Events,
@@ -11,6 +12,45 @@ import { config } from './config.js';
 import { FixedQueue } from './fixedQueue.js';
 
 const openai = new OpenAI({ apiKey: config.OPENAI_API_KEY });
+const tools = [{
+    type: "function" as const,
+    "function": {
+        "name": "get_api_status",
+        "description": "Get the status of the Discord API.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+        },
+        "strict": true
+    }
+}];
+
+interface DiscordStatusResponse {
+    page: {
+        id: string;
+        name: string;
+        url: string;
+        time_zone: string;
+        updated_at: string;
+    };
+    status: {
+        indicator: string;
+        description: string;
+    };
+}
+async function getApiStatus(): Promise<DiscordStatusResponse | null> {
+		try {
+			const response = await fetch('https://discordstatus.com/api/v2/status.json');
+			const data: DiscordStatusResponse = await response.json();
+			return data;
+		} catch (error) {
+			console.error('Error fetching Discord API status:', error);
+			return null;
+		}
+	}
+
 const pinecone = new Pinecone({ apiKey: config.PINECONE_API_KEY });
 
 const client = new Client({
@@ -97,8 +137,28 @@ async function respondToQuestion(
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4',
 		messages,
+		tools,
+		tool_choice: 'auto',
 	});
-	const answer = `${response.choices[0].message.content || ''}\n\nTo learn more, read:\n${urls}`;
+	let answer = response.choices[0].message.content || '';
+
+
+	if (response.choices[0].message.tool_calls) {
+		for (const toolCall of response.choices[0].message.tool_calls) {
+			if (toolCall.function.name === 'get_api_status') {
+				const status = await getApiStatus();
+				if (status) {
+					answer += `\n\nDiscord API Status:\n` +
+							 `Status: ${status.status.description}\n` +
+							 `Last Updated: ${status.page.updated_at}`;
+				} else {
+					answer += '\n\nUnable to fetch Discord API status at this time.';
+				}
+			}
+		}
+	}
+
+	answer += `\n\nTo learn more, read:\n${urls}`;
 	return answer;
 }
 

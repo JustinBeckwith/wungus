@@ -113,7 +113,9 @@ async function respondToQuestion(
 	previousMessages: FixedQueue,
 ) {
 	const retrievedDocs = await queryPinecone(question);
-	const context = retrievedDocs.map((match) => match.metadata?.text).join('\n');
+	const context = retrievedDocs
+		.map((match) => `${match?.metadata?.url}: ${match.metadata?.text}`)
+		.join('\n');
 	const uniqueUrls = new Set(
 		retrievedDocs
 			.filter((doc) => !!doc.metadata?.url)
@@ -132,7 +134,7 @@ async function respondToQuestion(
 		{
 			role: 'system',
 			content:
-				"You are an assistant that answers questions specific to the Discord API. You should not answer questions about anything but Discord and it's associated API, tools, and libraries.",
+				"You are an assistant that answers questions specific to the Discord API. You should not answer questions about anything but Discord and it's associated API, tools, and libraries. If someone says 'bot', assume they may also be talking about an 'app'.  Include urls where possible to resources.  Use markdown for nicer formatting.",
 		},
 		{
 			role: 'system',
@@ -155,16 +157,19 @@ async function respondToQuestion(
 				const status = await getApiStatus();
 				if (status) {
 					answer = `${answer} 
-\n\nDiscord API Status:\n 
-Status: ${status.status.description}\n 
-Last Updated: ${status.page.updated_at};
-						`;
+Discord API Status: ${status.status.description}
+Last Updated: ${status.page.updated_at}`;
 				} else {
 					answer = `${answer} \n\nUnable to fetch Discord API status at this time.`;
 				}
 			}
 		}
 	}
+
+	history.push({
+		role: 'assistant',
+		content: answer,
+	});
 
 	answer += `\n\nTo learn more, read:\n${urls}`;
 	return answer;

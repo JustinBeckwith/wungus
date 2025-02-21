@@ -114,9 +114,13 @@ async function respondToQuestion(
 ) {
 	const retrievedDocs = await queryPinecone(question);
 	const context = retrievedDocs.map((match) => match.metadata?.text).join('\n');
-	const urls = retrievedDocs
-		.filter((doc) => !!doc.metadata?.url)
-		.map((doc) => `-# - ${doc.metadata?.url}`)
+	const uniqueUrls = new Set(
+		retrievedDocs
+			.filter((doc) => !!doc.metadata?.url)
+			.map((doc) => doc.metadata?.url as string),
+	);
+	const urls = Array.from(uniqueUrls)
+		.map((url) => `-# - ${url}`)
 		.join('\n');
 	const history = previousMessages.toArray().map((message) => {
 		return {

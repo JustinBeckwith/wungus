@@ -24,8 +24,6 @@ do {
 console.log(`Total vectors retrieved: ${allVectors.length}`);
 
 for (const vector of allVectors) {
-	if (!vector.id.startsWith('https://')) {
-		console.log(`Deleting vector with ID: ${vector.id}`);
-		await index.deleteOne(vector.id);
-	}
+	console.log(`Deleting vector with ID: ${vector.id}`);
+	await index.deleteOne(vector.id);
 }

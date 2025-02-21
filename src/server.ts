@@ -1,4 +1,3 @@
-import { Pinecone } from '@pinecone-database/pinecone';
 import {
 	Client,
 	Events,
@@ -9,52 +8,12 @@ import {
 import { OpenAI } from 'openai';
 import { config } from './config.js';
 import { FixedQueue } from './fixedQueue.js';
+import { getApiStatus, toolsConfig } from './tools/discordStatus.js';
+import { getContext } from './tools/rag.js';
 
 const openai = new OpenAI({ apiKey: config.OPENAI_API_KEY });
-const tools = [
-	{
-		type: 'function' as const,
-		function: {
-			name: 'get_api_status',
-			description: 'Get the status of the Discord API.',
-			parameters: {
-				type: 'object',
-				properties: {},
-				required: [],
-				additionalProperties: false,
-			},
-			strict: true,
-		},
-	},
-];
 
-interface DiscordStatusResponse {
-	page: {
-		id: string;
-		name: string;
-		url: string;
-		time_zone: string;
-		updated_at: string;
-	};
-	status: {
-		indicator: string;
-		description: string;
-	};
-}
-async function getApiStatus(): Promise<DiscordStatusResponse | null> {
-	try {
-		const response = await fetch(
-			'https://discordstatus.com/api/v2/status.json',
-		);
-		const data: DiscordStatusResponse = await response.json();
-		return data;
-	} catch (error) {
-		console.error('Error fetching Discord API status:', error);
-		return null;
-	}
-}
-
-const pinecone = new Pinecone({ apiKey: config.PINECONE_API_KEY });
+const tools = [toolsConfig];
 
 const client = new Client({
 	intents: [
@@ -69,8 +28,14 @@ client.once(Events.ClientReady, (readyClient) => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
+// Keep a queue of messages specific to each user.  this is used for context
+// with the LLM.  We may want to use a thread level context instead of user
+// level context in the future.
 const messages = new Map<string, FixedQueue>();
 
+// Right now this works by listening to every message, and only responding when
+// @wungus is specifically mentioned.  In the future it could get smarter and
+// directly engage in the conversation without being summoned.
 client.on(Events.MessageCreate, async (message: Message) => {
 	let mentionsBot = false;
 	for (const [userId] of message.mentions.users) {
@@ -87,6 +52,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
 	messageList.push(message.content);
 	messages.set(message.author.id, messageList);
 
+	// Not sure sure of this code, but it looks like `sendTyping` times out after a while,
+	// and without a loop it would send once then timeout.
 	let typing = true;
 	const typingLoop = async () => {
 		while (typing) {
@@ -106,24 +73,19 @@ client.on(Events.MessageCreate, async (message: Message) => {
 	typing = false;
 });
 
-client.login(config.DISCORD_TOKEN);
-
+/**
+ * This is where the magic happens.  This will:
+ * - Create embeddings for the question, and use that to query pinecone for similar results
+ * - Include chunks from pinecone as context in the query
+ * - Include history in the query
+ * - Call the LLM with the above context
+ */
 async function respondToQuestion(
 	question: string,
 	previousMessages: FixedQueue,
 ) {
-	const retrievedDocs = await queryPinecone(question);
-	const context = retrievedDocs
-		.map((match) => `${match?.metadata?.url}: ${match.metadata?.text}`)
-		.join('\n');
-	const uniqueUrls = new Set(
-		retrievedDocs
-			.filter((doc) => !!doc.metadata?.url)
-			.map((doc) => doc.metadata?.url as string),
-	);
-	const urls = Array.from(uniqueUrls)
-		.map((url) => `-# - ${url}`)
-		.join('\n');
+	// Pull context from pinecone (ragtime)
+	const { context, urls } = await getContext(question);
 	const history = previousMessages.toArray().map((message) => {
 		return {
 			role: 'user',
@@ -151,6 +113,7 @@ async function respondToQuestion(
 	});
 	let answer = response.choices[0].message.content || '';
 
+	// If the LLM calls a tool, handle it here.  Right now it's only the Discord API status.
 	if (response.choices[0].message.tool_calls) {
 		for (const toolCall of response.choices[0].message.tool_calls) {
 			if (toolCall.function.name === 'get_api_status') {
@@ -166,6 +129,7 @@ Last Updated: ${status.page.updated_at}`;
 		}
 	}
 
+	// Add the assistant's answer to the history
 	history.push({
 		role: 'assistant',
 		content: answer,
@@ -175,23 +139,4 @@ Last Updated: ${status.page.updated_at}`;
 	return answer;
 }
 
-async function getEmbedding(text: string) {
-	console.log(`Creating embedding for: ${text}`);
-	const response = await openai.embeddings.create({
-		model: 'text-embedding-ada-002',
-		input: text,
-	});
-	return response.data[0].embedding;
-}
-
-async function queryPinecone(userQuery: string) {
-	const index = pinecone.Index(config.PINECONE_INDEX_NAME);
-	const queryEmbedding = await getEmbedding(userQuery);
-	const queryResponse = await index.query({
-		vector: queryEmbedding,
-		topK: 5,
-		includeMetadata: true,
-	});
-	console.log(queryResponse);
-	return queryResponse.matches;
-}
+client.login(config.DISCORD_TOKEN);

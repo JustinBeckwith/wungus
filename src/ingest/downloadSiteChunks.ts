@@ -7,6 +7,7 @@ export interface DownloadSiteChunksOptions {
 	contentSelector: string;
 	validDomains?: string[];
 	headless?: boolean;
+	ignorePatterns?: RegExp[];
 }
 
 export class SiteCrawler {
@@ -17,12 +18,14 @@ export class SiteCrawler {
 	private visitedUrls: Set<string> = new Set();
 	private urlQueue: string[] = [];
 	private headless: boolean;
+	private ignorePatterns: RegExp[];
 
 	constructor(options: DownloadSiteChunksOptions) {
 		this.startUrl = options.startUrl;
 		this.contentSelector = options.contentSelector;
 		this.validDomains = options.validDomains ?? [options.startUrl];
 		this.headless = options.headless ?? true;
+		this.ignorePatterns = options.ignorePatterns ?? [];
 	}
 
 	async downloadSiteChunks() {
@@ -48,10 +51,7 @@ export class SiteCrawler {
 		}
 
 		await browser.close();
-
-		const filename = `tmp/chunks-${randomUUID()}.json`;
-		await fs.writeFile(filename, JSON.stringify(this.data, null, 2));
-		console.log(`Chunks saved to ${filename}`);
+		return this.data;
 	}
 
 	/**
@@ -67,14 +67,12 @@ export class SiteCrawler {
 	): Promise<{ text: string; links: string[] }> {
 		const page = await browser.newPage();
 		console.log(`Fetching page content: ${url}`);
-		console.log(`Content Selector: ${contentSelector}`);
 
 		try {
 			await page.goto(url, { waitUntil: 'networkidle2' });
 
 			// Extract page text (removes HTML tags)
 			const text = await page.evaluate((containerId) => {
-				console.log(`Container: ${containerId}`);
 				function cleanText(el: Element) {
 					return (el as HTMLElement).innerText.trim();
 				}
@@ -90,11 +88,18 @@ export class SiteCrawler {
 				}
 				const content = [];
 				const elems = document.querySelectorAll(`${containerId} *`);
-				console.log(elems);
 				for (const el of elems) {
 					const tagName = el.tagName.toLowerCase();
-					if (tagName.match(/^h[1-3]$/)) {
+					if (tagName === 'h1') {
+						content.push(`# ${cleanText(el)}`); // Preserve headings
+					} else if (tagName === 'h2') {
+						content.push(`## ${cleanText(el)}`); // Preserve headings
+					} else if (tagName === 'h3') {
 						content.push(`### ${cleanText(el)}`); // Preserve headings
+					} else if (tagName === 'h4') {
+						content.push(`#### ${cleanText(el)}`); // Preserve headings
+					} else if (tagName === 'h5') {
+						content.push(`##### ${cleanText(el)}`); // Preserve headings
 					} else if (tagName === 'p') {
 						content.push(cleanText(el)); // Preserve paragraphs
 					} else if (tagName === 'pre') {
@@ -119,7 +124,11 @@ export class SiteCrawler {
 			return { text: text || '', links };
 		} catch (error) {
 			console.error(`Error fetching ${url}:`, error);
-			await page.close();
+			try {
+				await page.close();
+			} catch (error) {
+				console.error(`Error closing page for ${url}:`, error);
+			}
 			return { text: '', links: [] };
 		}
 	}
@@ -134,7 +143,6 @@ export class SiteCrawler {
 			const urlObj = new URL(link);
 			urlObj.hash = ''; // Remove hash to ensure unique URLs
 			urlObj.search = ''; // Remove search params to ensure unique URLs
-			console.log(`maybe queue: ${urlObj.href}`);
 			if (
 				this.isValidDomain(urlObj.href) &&
 				!this.visitedUrls.has(urlObj.href)
@@ -160,6 +168,12 @@ export class SiteCrawler {
 		urlObj.hash = ''; // Remove hash to ensure unique URLs
 		urlObj.search = ''; // Remove search params to ensure unique URLs
 		if (this.visitedUrls.has(urlObj.href)) return;
+		for (const pattern of this.ignorePatterns) {
+			if (pattern.test(urlObj.href)) {
+				console.log(`Ignoring URL: ${urlObj.href}`);
+				return;
+			}
+		}
 		this.visitedUrls.add(urlObj.href);
 
 		const { text, links } = await this.fetchPageContent(
@@ -170,7 +184,9 @@ export class SiteCrawler {
 		console.log(`Extracted Text from ${urlObj.href}:`);
 		console.log(text);
 		console.log(`Queuing ${links.length} links`);
-		this.data[urlObj.href] = text;
+		if (text.trim().length > 0) {
+			this.data[urlObj.href] = text.trim();
+		}
 
 		this.enqueueLinks(links, baseDomain);
 	}
@@ -178,11 +194,9 @@ export class SiteCrawler {
 	private isValidDomain(url: string) {
 		for (const domain of this.validDomains) {
 			if (url.startsWith(domain)) {
-				console.log(`Valid domain: ${url}`);
 				return true;
 			}
 		}
-		console.log(`INValid domain: ${url}`);
 		return false;
 	}
 }

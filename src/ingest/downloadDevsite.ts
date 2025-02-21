@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import { SiteCrawler } from './downloadSiteChunks.js';
 
 const crawley = new SiteCrawler({
@@ -5,4 +6,7 @@ const crawley = new SiteCrawler({
 	contentSelector: '#algolia-crawler--page-content-container',
 });
 
-await crawley.downloadSiteChunks();
+const data = await crawley.downloadSiteChunks();
+
+const outputFilename = 'tmp/raw-devsite.json';
+await fs.writeFile(outputFilename, JSON.stringify(data, null, 2));

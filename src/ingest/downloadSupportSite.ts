@@ -21,5 +21,12 @@ const crawley = new SiteCrawler({
 });
 
 const data = await crawley.downloadSiteChunks();
+
+for (const key of Object.keys(data)) {
+	if (!key.includes('/articles/')) {
+		delete data[key];
+	}
+}
+
 const outputFilename = 'tmp/raw-supportsite.json';
 await fs.writeFile(outputFilename, JSON.stringify(data, null, 2));

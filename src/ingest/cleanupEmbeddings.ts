@@ -24,6 +24,11 @@ do {
 console.log(`Total vectors retrieved: ${allVectors.length}`);
 
 for (const vector of allVectors) {
-	console.log(`Deleting vector with ID: ${vector.id}`);
-	await index.deleteOne(vector.id);
+	if (
+		vector.id.includes('support-dev.discord.com') &&
+		!vector.id.includes('/articles/')
+	) {
+		console.log(`Deleting vector with ID: ${vector.id}`);
+		await index.deleteOne(vector.id);
+	}
 }

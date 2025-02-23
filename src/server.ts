@@ -5,6 +5,7 @@ import {
 	type Message,
 	MessageFlags,
 } from 'discord.js';
+import express from 'express';
 import { OpenAI } from 'openai';
 import { config } from './config.js';
 import { FixedQueue } from './fixedQueue.js';
@@ -140,3 +141,13 @@ Last Updated: ${status.page.updated_at}`;
 }
 
 client.login(config.DISCORD_TOKEN);
+
+const app = express();
+app.get('/', (_req, res) => {
+	res.send('Hello World!');
+});
+
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+	console.log(`Server listening on port ${port}`);
+});

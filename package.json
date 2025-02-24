@@ -5,7 +5,6 @@
   "main": "build/src/server.js",
   "type": "module",
   "scripts": {
-    "prepare": "npm run build",
     "build": "tsc -p .",
     "build:watch": "tsc -w",
     "pretest": "npm run build",

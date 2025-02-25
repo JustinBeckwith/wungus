@@ -1,9 +1,11 @@
 import {
+	ChannelType,
 	Client,
 	Events,
 	GatewayIntentBits,
 	type Message,
 	MessageFlags,
+	Partials,
 } from 'discord.js';
 import express from 'express';
 import { OpenAI } from 'openai';
@@ -24,6 +26,7 @@ const client = new Client({
 		GatewayIntentBits.MessageContent,
 		GatewayIntentBits.DirectMessages,
 	],
+	partials: [Partials.Channel],
 });
 
 client.once(Events.ClientReady, (readyClient) => {
@@ -39,21 +42,23 @@ const messages = new Map<string, FixedQueue>();
 // @wungus is specifically mentioned.  In the future it could get smarter and
 // directly engage in the conversation without being summoned.
 client.on(Events.MessageCreate, async (message: Message) => {
-	// Don't respond to our own messages
-	if (message.author.id === client.user?.id) {
-		return;
-	}
+	// don't respond to bots
+	if (message.author.bot) return;
 
-	let mentionsBot = false;
-	for (const [userId] of message.mentions.users) {
-		if (userId === client.user?.id) {
-			mentionsBot = true;
-			break;
+	// allow DMing with the bot, otherwise require it to be summoned
+	if (message.channel.type !== ChannelType.DM) {
+		let mentionsBot = false;
+		for (const [userId] of message.mentions.users) {
+			if (userId === client.user?.id) {
+				mentionsBot = true;
+				break;
+			}
+		}
+		if (!mentionsBot) {
+			return;
 		}
 	}
-	if (!mentionsBot) {
-		return;
-	}
+
 	const messageList = messages.get(message.author.id) || new FixedQueue(5);
 	messageList.push(message.content);
 	messages.set(message.author.id, messageList);

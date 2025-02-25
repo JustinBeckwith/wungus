@@ -9,7 +9,9 @@ const vars = [
 	'OPENAI_API_KEY',
 ] as const;
 
-const config = {} as Record<(typeof vars)[number], string>;
+const config = {} as Record<(typeof vars)[number], string> & {
+	WUNGUS_DEBUG: boolean;
+};
 for (const key of vars) {
 	const value = process.env[key];
 	if (!value) {
@@ -17,5 +19,7 @@ for (const key of vars) {
 	}
 	config[key] = value;
 }
+
+config.WUNGUS_DEBUG = process.env.WUNGUS_DEBUG === 'true';
 
 export { config };

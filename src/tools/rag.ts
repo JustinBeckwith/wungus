@@ -6,7 +6,6 @@ const openai = new OpenAI({ apiKey: config.OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: config.PINECONE_API_KEY });
 
 export async function getEmbedding(text: string) {
-	console.log(`Creating embedding for: ${text}`);
 	const response = await openai.embeddings.create({
 		model: 'text-embedding-ada-002',
 		input: text,
@@ -22,7 +21,9 @@ export async function queryPinecone(userQuery: string) {
 		topK: 5,
 		includeMetadata: true,
 	});
-	console.log(queryResponse);
+	if (config.WUNGUS_DEBUG) {
+		console.log(queryResponse);
+	}
 	return queryResponse.matches;
 }
 

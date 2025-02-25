@@ -9,6 +9,7 @@ import express from 'express';
 import { OpenAI } from 'openai';
 import { config } from './config.js';
 import { FixedQueue } from './fixedQueue.js';
+import { splitMessage } from './messageSplitter.js';
 import { getApiStatus, toolsConfig } from './tools/discordStatus.js';
 import { getContext } from './tools/rag.js';
 
@@ -38,6 +39,11 @@ const messages = new Map<string, FixedQueue>();
 // @wungus is specifically mentioned.  In the future it could get smarter and
 // directly engage in the conversation without being summoned.
 client.on(Events.MessageCreate, async (message: Message) => {
+	// Don't respond to our own messages
+	if (message.author.id === client.user?.id) {
+		return;
+	}
+
 	let mentionsBot = false;
 	for (const [userId] of message.mentions.users) {
 		if (userId === client.user?.id) {
@@ -48,7 +54,6 @@ client.on(Events.MessageCreate, async (message: Message) => {
 	if (!mentionsBot) {
 		return;
 	}
-	console.log(`Received message: ${message.content}`);
 	const messageList = messages.get(message.author.id) || new FixedQueue(5);
 	messageList.push(message.content);
 	messages.set(message.author.id, messageList);
@@ -67,10 +72,16 @@ client.on(Events.MessageCreate, async (message: Message) => {
 	typingLoop();
 
 	const reply = await respondToQuestion(message.content, messageList);
-	await message.reply({
-		content: reply,
-		flags: MessageFlags.SuppressEmbeds,
-	});
+	const chunkedReply = await splitMessage(reply);
+
+	let lastMessage = message;
+	for (const chunk of chunkedReply) {
+		const replyMessage = await lastMessage.reply({
+			content: chunk,
+			flags: MessageFlags.SuppressEmbeds,
+		});
+		lastMessage = replyMessage;
+	}
 	typing = false;
 });
 
@@ -105,7 +116,9 @@ async function respondToQuestion(
 		},
 		...history,
 	];
-	console.log(JSON.stringify(messages, null, 2));
+	if (config.WUNGUS_DEBUG) {
+		console.log(JSON.stringify(messages, null, 2));
+	}
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4',
 		messages,

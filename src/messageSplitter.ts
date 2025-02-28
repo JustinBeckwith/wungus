@@ -2,6 +2,11 @@ import { config } from './config.js';
 
 /**
  * This is total AI slop.  Someone smarter than me should rewrite it.
+ * A good test prompt is "how would I write a bot in javascript, use a lot of examples and be very verbose"
+ * Interesting edge cases include:
+ * - A code block longer than 2k characters
+ * - A single chunk of text with no returns larger than 2k characters
+ * - A single chunk of text with no spaces larger than 2k characters
  * @param message
  * @returns
  */

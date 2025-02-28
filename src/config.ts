@@ -7,6 +7,7 @@ const vars = [
 	'PINECONE_INDEX_NAME',
 	'PINECONE_NAMESPACE',
 	'OPENAI_API_KEY',
+	'FORUM_CHANNEL_ID',
 ] as const;
 
 const config = {} as Record<(typeof vars)[number], string> & {

@@ -4,29 +4,25 @@ on:
       - main
   pull_request:
 name: ci
-env:
-  NODE: 22
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          node-version-file: 'package.json'
       - run: pnpm install
       - run: pnpm test
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE }}
-          cache: npm
+          node-version-file: 'package.json'
       - run: pnpm install
       - run: pnpm run lint
   

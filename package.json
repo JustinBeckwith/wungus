@@ -4,6 +4,9 @@
   "description": "wungus",
   "main": "build/src/server.js",
   "packageManager": "pnpm@9.12.2",
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "scripts": {
     "build": "tsc -p .",

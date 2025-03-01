@@ -9,7 +9,7 @@ Wungus is a Discord bot that uses LLMs to answer questions about the Discord API
 This project requires Node.js v20 or higher. After cloning the repository, install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 You're going to need a .env file to run the project.  See .env.example for the required variables.
@@ -27,6 +27,14 @@ For your own development, you're going to want to create your own:
 - Pinecone namespace
 
 Feed all of these into the .env file and you're off to the races.
+
+### Running the bot
+
+After setting up your `.env`:
+
+```bash
+pnpm dev
+```
 
 ### Using the content ingestion tools
 

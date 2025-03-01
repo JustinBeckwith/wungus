@@ -40,5 +40,8 @@ export async function getContext(question: string) {
 	const urls = Array.from(uniqueUrls)
 		.map((url) => `-# - ${url}`)
 		.join('\n');
+	if (config.WUNGUS_DEBUG) {
+		console.log(JSON.stringify(retrievedDocs, null, 2));
+	}
 	return { context, urls };
 }

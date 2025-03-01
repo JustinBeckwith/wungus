@@ -3,11 +3,15 @@
   "version": "0.0.0",
   "description": "wungus",
   "main": "build/src/server.js",
+  "packageManager": "pnpm@9.12.2",
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "scripts": {
     "build": "tsc -p .",
     "build:watch": "tsc -w",
-    "dev": "tsc -w & nodemon build/src/server.js",
+    "dev": "nodemon --watch 'src/**' --ext 'ts,json' --exec 'tsx src/server.ts'",
     "pretest": "npm run build",
     "test": "node --test build/test/*.js",
     "fix": "biome check --write .",
@@ -41,6 +45,7 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.0",
     "nodemon": "^3.1.9",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "tsx": "^4.7.1"
   }
 }

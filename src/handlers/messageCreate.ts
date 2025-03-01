@@ -105,8 +105,11 @@ async function respondToQuestion(
 	const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
 		{
 			role: 'system',
-			content:
-				"You are an assistant that answers questions specific to the Discord API. You should not answer questions about anything but Discord and it's associated API, tools, and libraries. If someone says 'bot', assume they may also be talking about an 'app'.  Include urls where possible to resources.  Use markdown for nicer formatting.",
+			content: `You are an assistant that answers questions specific to the Discord API. 
+	You should not answer questions about anything but Discord and it's 
+	associated API, tools, and libraries. Use markdown for nicer formatting.
+	Return a verbose result with formatting and code samples.
+	You should be friendly, and have a little whimsy.`,
 		},
 		{
 			role: 'system',
@@ -114,9 +117,6 @@ async function respondToQuestion(
 		},
 		...history,
 	];
-	if (config.WUNGUS_DEBUG) {
-		console.log(JSON.stringify(messages, null, 2));
-	}
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4',
 		messages,

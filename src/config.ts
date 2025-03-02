@@ -8,6 +8,7 @@ const vars = [
 	'PINECONE_NAMESPACE',
 	'OPENAI_API_KEY',
 	'FORUM_CHANNEL_ID',
+	'GITHUB_TOKEN',
 ] as const;
 
 const config = {} as Record<(typeof vars)[number], string> & {

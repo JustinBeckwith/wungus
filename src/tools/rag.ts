@@ -18,7 +18,7 @@ export async function queryPinecone(userQuery: string) {
 	const queryEmbedding = await getEmbedding(userQuery);
 	const queryResponse = await index.query({
 		vector: queryEmbedding,
-		topK: 5,
+		topK: 15,
 		includeMetadata: true,
 	});
 	if (config.WUNGUS_DEBUG) {
@@ -29,14 +29,17 @@ export async function queryPinecone(userQuery: string) {
 
 export async function getContext(question: string) {
 	const retrievedDocs = await queryPinecone(question);
-	const context = retrievedDocs
-		.map((match) => `${match?.metadata?.url}: ${match.metadata?.text}`)
-		.join('\n');
-	const uniqueUrls = new Set(
-		retrievedDocs
-			.filter((doc) => !!doc.metadata?.url)
-			.map((doc) => doc.metadata?.url as string),
-	);
+	let context = '';
+	const uniqueUrls = new Set<string>();
+	for (const match of retrievedDocs) {
+		const nextChunk = `${match?.metadata?.url}: ${match.metadata?.text}\n`;
+		if (context.length + nextChunk.length < 8192) {
+			context += nextChunk;
+			uniqueUrls.add(match.metadata?.url as string);
+		} else {
+			break;
+		}
+	}
 	const urls = Array.from(uniqueUrls)
 		.map((url) => `-# - ${url}`)
 		.join('\n');

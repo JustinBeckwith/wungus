@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { config } from '../config.js';
 
@@ -24,7 +25,7 @@ do {
 console.log(`Total vectors retrieved: ${allVectors.length}`);
 
 for (const vector of allVectors) {
-	if (vector.id.includes('/hc/categories')) {
+	if (vector.id.includes('https://support-dev.discord.com')) {
 		console.log(`Deleting vector with ID: ${vector.id}`);
 		await index.deleteOne(vector.id);
 	}

@@ -17,7 +17,14 @@ const crawley = new SiteCrawler({
 	 * to me if this should be done by more strictly analyzing the content, or by
 	 * adding an additional parameter here to "scan for links but not ingest".
 	 */
-	ignorePatterns: [/article_attachments/, /\/requests\/new/],
+	ignorePatterns: [
+		/article_attachments/,
+		/\/requests\/new/,
+		/\/related\/click/,
+		/\/categories\/360000656531/,
+		/\/en-us\/signin/,
+		/\/articles\/6206007597207/,
+	],
 });
 
 const data = await crawley.downloadSiteChunks();

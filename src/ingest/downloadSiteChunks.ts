@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import puppeteer from 'puppeteer';
 
@@ -51,6 +52,18 @@ export class SiteCrawler {
 		}
 
 		await browser.close();
+
+		const hashSet = new Set<string>();
+		for (const key in this.data) {
+			const value = this.data[key];
+			const hash = crypto.createHash('sha1').update(value).digest('hex');
+			if (hashSet.has(hash)) {
+				console.log(`Removing duplicate content: ${key}`);
+				delete this.data[key];
+			} else {
+				hashSet.add(hash);
+			}
+		}
 		return this.data;
 	}
 
@@ -69,7 +82,7 @@ export class SiteCrawler {
 		console.log(`Fetching page content: ${url}`);
 
 		try {
-			await page.goto(url, { waitUntil: 'networkidle2' });
+			await page.goto(url, { waitUntil: ['networkidle2', 'domcontentloaded'] });
 
 			// Extract page text (removes HTML tags)
 			const text = await page.evaluate((containerId) => {
@@ -123,7 +136,8 @@ export class SiteCrawler {
 			await page.close();
 			return { text: text || '', links };
 		} catch (error) {
-			console.error(`Error fetching ${url}:`, error);
+			console.error(`Error fetching ${url}:`);
+			console.error(error);
 			try {
 				await page.close();
 			} catch (error) {

@@ -30,19 +30,16 @@ export async function queryPinecone(userQuery: string) {
 export async function getContext(question: string) {
 	const retrievedDocs = await queryPinecone(question);
 	let context = '';
-	const uniqueUrls = new Set<string>();
+	const urls = new Set<string>();
 	for (const match of retrievedDocs) {
 		const nextChunk = `${match?.metadata?.url}: ${match.metadata?.text}\n`;
 		if (context.length + nextChunk.length < 8192) {
 			context += nextChunk;
-			uniqueUrls.add(match.metadata?.url as string);
+			urls.add(match.metadata?.url as string);
 		} else {
 			break;
 		}
 	}
-	const urls = Array.from(uniqueUrls)
-		.map((url) => `-# - ${url}`)
-		.join('\n');
 	if (config.WUNGUS_DEBUG) {
 		console.log(JSON.stringify(retrievedDocs, null, 2));
 	}

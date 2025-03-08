@@ -69,10 +69,19 @@ export async function onMessageCreate(message: Message) {
 	};
 	typingLoop();
 
-	const reply = await respondToQuestion(message.content, messageList);
+	const { context, urls } = await getContext(message.content);
+	const urlString = Array.from(urls)
+		.slice(0, 5)
+		.map((url) => `- -# ${url}`)
+		.join('\n');
+	let lastMessage = await message.reply({
+		content: `👋 Hello there, this is wungus. I am a bot that can help you with your questions.  I'm working on a reply right now.  In the meantime, here are a few resources you can read!\n${urlString}`,
+		flags: MessageFlags.SuppressEmbeds,
+	});
+
+	const reply = await respondToQuestion(messageList, context);
 	const chunkedReply = await splitMessage(reply);
 
-	let lastMessage = message;
 	for (const chunk of chunkedReply) {
 		const replyMessage = await lastMessage.reply({
 			content: chunk,
@@ -91,11 +100,9 @@ export async function onMessageCreate(message: Message) {
  * - Call the LLM with the above context
  */
 async function respondToQuestion(
-	question: string,
 	previousMessages: FixedQueue,
+	context: string,
 ) {
-	// Pull context from pinecone (ragtime)
-	const { context, urls } = await getContext(question);
 	const history = previousMessages.toArray().map((message) => {
 		return {
 			role: 'user',
@@ -147,6 +154,5 @@ Last Updated: ${status.page.updated_at}`;
 		content: answer,
 	});
 
-	answer += `\n\nTo learn more, read:\n${urls}`;
 	return answer;
 }

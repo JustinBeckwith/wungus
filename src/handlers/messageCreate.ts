@@ -1,7 +1,9 @@
-// Keep a queue of messages specific to each user.  this is used for context
-// with the LLM.  We may want to use a thread level context instead of user
-
-import { ChannelType, type Message, MessageFlags } from 'discord.js';
+import {
+	type Channel,
+	ChannelType,
+	type Message,
+	MessageFlags,
+} from 'discord.js';
 import { OpenAI } from 'openai';
 import { config } from '../config.js';
 import { FixedQueue } from '../fixedQueue.js';
@@ -12,7 +14,6 @@ const tools = [toolsConfig];
 
 const openai = new OpenAI({ apiKey: config.OPENAI_API_KEY });
 
-// level context in the future.
 const userMessages = new Map<string, FixedQueue>();
 const threadMessages = new Map<string, FixedQueue>();
 
@@ -63,7 +64,7 @@ export async function onMessageCreate(message: Message) {
 		while (typing) {
 			if ('sendTyping' in message.channel) {
 				await message.channel.sendTyping();
-				await new Promise((resolve) => setTimeout(resolve, 5000));
+				await new Promise((resolve) => setTimeout(resolve, 3000));
 			}
 		}
 	};
@@ -74,47 +75,26 @@ export async function onMessageCreate(message: Message) {
 		.slice(0, 5)
 		.map((url) => `- -# ${url}`)
 		.join('\n');
+
 	let lastMessage = await message.reply({
 		content: `👋 Hello there, this is wungus. I am a bot that can help you with your questions.  I'm working on a reply right now.  In the meantime, here are a few resources you can read!\n${urlString}`,
 		flags: MessageFlags.SuppressEmbeds,
 	});
 
-	const reply = await respondToQuestion(messageList, context);
-	const chunkedReply = await splitMessage(reply);
-
-	for (const chunk of chunkedReply) {
-		const replyMessage = await lastMessage.reply({
-			content: chunk,
-			flags: MessageFlags.SuppressEmbeds,
-		});
-		lastMessage = replyMessage;
-	}
-	typing = false;
-}
-
-/**
- * This is where the magic happens.  This will:
- * - Create embeddings for the question, and use that to query pinecone for similar results
- * - Include chunks from pinecone as context in the query
- * - Include history in the query
- * - Call the LLM with the above context
- */
-async function respondToQuestion(
-	previousMessages: FixedQueue,
-	context: string,
-) {
-	const history = previousMessages.toArray().map((message) => {
+	const history = messageList.toArray().map((message) => {
 		return {
 			role: 'user',
 			content: message,
 		} as OpenAI.Chat.Completions.ChatCompletionMessageParam;
 	});
+
 	const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
 		{
 			role: 'system',
 			content: `You are an assistant that answers questions specific to the Discord API. 
 	You should not answer questions about anything but Discord and it's 
 	associated API, tools, and libraries. Use markdown for nicer formatting.
+	Include many links to samples or resources.
 	Return a verbose result with formatting and code samples.
 	You should be friendly, and have a little whimsy.`,
 		},
@@ -124,35 +104,62 @@ async function respondToQuestion(
 		},
 		...history,
 	];
+
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4',
 		messages,
 		tools,
 		tool_choice: 'auto',
+		stream: true,
 	});
-	let answer = response.choices[0].message.content || '';
 
-	// If the LLM calls a tool, handle it here.  Right now it's only the Discord API status.
-	if (response.choices[0].message.tool_calls) {
-		for (const toolCall of response.choices[0].message.tool_calls) {
-			if (toolCall.function.name === 'get_api_status') {
-				const status = await getApiStatus();
-				if (status) {
-					answer = `${answer} 
+	let chunkWindow: string[] = [];
+	const fullMessage: string[] = [];
+
+	for await (const chunk of response) {
+		let answer = chunk.choices[0]?.delta?.content || '';
+
+		// If the LLM calls a tool, handle it here.  Right now it's only the Discord API status.
+		if (chunk.choices[0]?.delta?.tool_calls) {
+			for (const toolCall of chunk.choices[0].delta.tool_calls) {
+				if (toolCall.function?.name === 'get_api_status') {
+					const status = await getApiStatus();
+					if (status) {
+						answer = `${answer} 
 Discord API Status: ${status.status.description}
 Last Updated: ${status.page.updated_at}`;
-				} else {
-					answer = `${answer} \n\nUnable to fetch Discord API status at this time.`;
+					} else {
+						answer = `${answer} \n\nUnable to fetch Discord API status at this time.`;
+					}
 				}
 			}
 		}
+		chunkWindow.push(answer);
+		fullMessage.push(answer);
+
+		if (chunkWindow.join('').length > 2000) {
+			const [content, remainder] = splitMessage(chunkWindow.join(''));
+			lastMessage = await lastMessage.reply({
+				content,
+				flags: MessageFlags.SuppressEmbeds,
+			});
+			chunkWindow = remainder;
+		}
+	}
+
+	typing = false;
+
+	// flush the last message
+	if (chunkWindow.length > 0) {
+		lastMessage = await lastMessage.reply({
+			content: chunkWindow.join(''),
+			flags: MessageFlags.SuppressEmbeds,
+		});
 	}
 
 	// Add the assistant's answer to the history
 	history.push({
 		role: 'assistant',
-		content: answer,
+		content: fullMessage.join(''),
 	});
-
-	return answer;
 }

@@ -2,7 +2,6 @@ import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
 import express from 'express';
 import { config } from './config.js';
 import { onMessageCreate } from './handlers/messageCreate.js';
-import { onThreadCreate } from './handlers/threadCreate.js';
 
 const client = new Client({
 	intents: [
@@ -19,7 +18,6 @@ client.once(Events.ClientReady, (readyClient) => {
 });
 
 client.on(Events.MessageCreate, onMessageCreate);
-client.on(Events.ThreadCreate, onThreadCreate);
 
 client.login(config.DISCORD_TOKEN);
 

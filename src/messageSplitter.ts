@@ -4,6 +4,7 @@
 export function splitMessage(message: string): [string, string[]] {
 	let openCodeBlock = false;
 	let chunk = '';
+	let pendingChunk = '';
 	const remainder: string[] = [];
 	const lines = message.split('\n');
 
@@ -14,23 +15,56 @@ export function splitMessage(message: string): [string, string[]] {
 		if (codeBlockMarkers % 2 === 1) {
 			openCodeBlock = !openCodeBlock;
 		}
-		// If even number of ``` in line, state remains the same
 
-		if (`${chunk}\n${line}`.length > 2000) {
-			if (openCodeBlock) {
-				remainder.push(line);
+		// Check if current chunk + line would exceed limit
+		const potentialChunk = `${chunk}\n${line}`;
+
+		if (potentialChunk.length > 2000) {
+			// If we're in a code block or have pending markdown, add to pending
+			if (openCodeBlock || isIncompleteMarkdown(chunk)) {
+				pendingChunk += `\n${line}`;
 			} else {
-				remainder.push(`${chunk}\n${line}`);
-				chunk = '';
+				// If we have pending content, add it first
+				if (pendingChunk) {
+					remainder.push(chunk + pendingChunk);
+					pendingChunk = '';
+				} else {
+					remainder.push(chunk);
+				}
+				chunk = line;
 			}
 		} else {
-			chunk += `\n${line}`;
+			// If we have pending content, keep accumulating
+			if (pendingChunk) {
+				pendingChunk += `\n${line}`;
+				// Check if pending content is now complete
+				if (!isIncompleteMarkdown(pendingChunk) && !openCodeBlock) {
+					chunk += pendingChunk;
+					pendingChunk = '';
+				}
+			} else {
+				chunk += `\n${line}`;
+			}
 		}
 	}
 
+	// Handle any remaining content
+	if (pendingChunk) {
+		chunk += pendingChunk;
+	}
 	if (chunk.length > 0) {
 		remainder.push(chunk);
 	}
 
 	return [remainder.shift() || '', remainder];
+}
+
+function isIncompleteMarkdown(text: string): boolean {
+	const openBrackets =
+		(text.match(/\[/g) || []).length - (text.match(/\]/g) || []).length;
+	const openParens =
+		(text.match(/\(/g) || []).length - (text.match(/\)/g) || []).length;
+	const openBackticks = (text.match(/`/g) || []).length % 2 === 1;
+
+	return openBrackets > 0 || openParens > 0 || openBackticks;
 }

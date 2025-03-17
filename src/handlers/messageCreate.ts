@@ -26,7 +26,6 @@ export async function onMessageCreate(message: Message) {
 
 	let shouldRespond = false;
 	let messageList: FixedQueue | undefined = undefined;
-
 	if (message.channel.type === ChannelType.PublicThread) {
 		if (config.FORUM_CHANNEL_ID === message.channel.parentId) {
 			messageList = threadMessages.get(message.channelId) || new FixedQueue(5);

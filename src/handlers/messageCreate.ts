@@ -124,7 +124,7 @@ export async function onMessageCreate(message: Message) {
 				if (toolCall.function?.name === 'get_api_status') {
 					const status = await getApiStatus();
 					if (status) {
-						answer = `${answer} 
+						answer = `${answer}
 Discord API Status: ${status.status.description}
 Last Updated: ${status.page.updated_at}`;
 					} else {
@@ -137,12 +137,30 @@ Last Updated: ${status.page.updated_at}`;
 		fullMessage.push(answer);
 
 		if (chunkWindow.join('').length > 2000) {
-			const [content, remainder] = splitMessage(chunkWindow.join(''));
+			// Use incomplete flag to prevent closing code blocks in the last chunk (we're still streaming)
+			const [content, remainder] = splitMessage(chunkWindow.join(''), {
+				incomplete: true,
+			});
+
 			lastMessage = await lastMessage.reply({
 				content,
 				flags: MessageFlags.SuppressEmbeds,
 			});
-			chunkWindow = remainder;
+
+			// Send all but the last remainder chunk
+			for (let i = 0; i < remainder.length - 1; i++) {
+				lastMessage = await lastMessage.reply({
+					content: remainder[i],
+					flags: MessageFlags.SuppressEmbeds,
+				});
+			}
+
+			// Keep the last remainder chunk in the window if it exists (it may be incomplete)
+			if (remainder.length > 0) {
+				chunkWindow = [remainder[remainder.length - 1]];
+			} else {
+				chunkWindow = [];
+			}
 		}
 	}
 

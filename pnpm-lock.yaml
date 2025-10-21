@@ -28,7 +28,7 @@ importers:
         version: 12.4.2(@types/node@22.13.8)
       openai:
         specifier: ^4.82.0
-        version: 4.86.1(ws@8.18.1)(zod@3.24.2)
+        version: 4.86.1(ws@8.18.3)(zod@3.25.76)
       puppeteer:
         specifier: ^24.2.0
         version: 24.3.0(typescript@5.8.2)
@@ -1678,6 +1678,18 @@ packages:
       utf-8-validate:
         optional: true
 
+  ws@8.18.3:
+    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -1699,6 +1711,9 @@ packages:
 
   zod@3.24.2:
     resolution: {integrity: sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==}
+
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -3107,7 +3122,7 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  openai@4.86.1(ws@8.18.1)(zod@3.24.2):
+  openai@4.86.1(ws@8.18.3)(zod@3.25.76):
     dependencies:
       '@types/node': 18.19.78
       '@types/node-fetch': 2.6.12
@@ -3117,8 +3132,8 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0
     optionalDependencies:
-      ws: 8.18.1
-      zod: 3.24.2
+      ws: 8.18.3
+      zod: 3.25.76
     transitivePeerDependencies:
       - encoding
 
@@ -3550,6 +3565,9 @@ snapshots:
 
   ws@8.18.1: {}
 
+  ws@8.18.3:
+    optional: true
+
   y18n@5.0.8: {}
 
   yargs-parser@21.1.1: {}
@@ -3572,5 +3590,8 @@ snapshots:
   yoctocolors-cjs@2.1.2: {}
 
   zod@3.24.2: {}
+
+  zod@3.25.76:
+    optional: true
 
   zwitch@2.0.4: {}

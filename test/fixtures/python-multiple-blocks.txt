@@ -1,0 +1,108 @@
+Here's how to build a Discord bot with Python using discord.py:
+
+First, install the library:
+```bash
+pip install discord.py
+```
+
+Now create your bot:
+
+```python
+import discord
+from discord.ext import commands
+import os
+from typing import Optional
+
+# Create bot instance
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+# Event: Bot is ready
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user.name} ({bot.user.id})')
+    print('------')
+    await bot.change_presence(activity=discord.Game(name="!help"))
+
+# Event: New member joins
+@bot.event
+async def on_member_join(member: discord.Member):
+    channel = member.guild.system_channel
+    if channel:
+        await channel.send(f'Welcome {member.mention} to {member.guild.name}!')
+
+# Command: Ping
+@bot.command(name='ping', help='Check bot latency')
+async def ping(ctx: commands.Context):
+    await ctx.send(f'Pong! Latency: {round(bot.latency * 1000)}ms')
+
+# Command: User info
+@bot.command(name='userinfo', help='Get user information')
+async def userinfo(ctx: commands.Context, member: Optional[discord.Member] = None):
+    member = member or ctx.author
+
+    embed = discord.Embed(
+        title=f'User Info - {member.name}',
+        color=discord.Color.blue()
+    )
+    embed.add_field(name='ID', value=member.id)
+    embed.add_field(name='Nickname', value=member.nick or 'None')
+    embed.add_field(name='Status', value=str(member.status))
+    embed.add_field(name='Joined Server', value=member.joined_at.strftime('%Y-%m-%d'))
+    embed.add_field(name='Account Created', value=member.created_at.strftime('%Y-%m-%d'))
+    embed.set_thumbnail(url=member.avatar.url if member.avatar else member.default_avatar.url)
+
+    await ctx.send(embed=embed)
+
+# Command: Server info
+@bot.command(name='serverinfo', help='Get server information')
+async def serverinfo(ctx: commands.Context):
+    guild = ctx.guild
+
+    embed = discord.Embed(
+        title=f'Server Info - {guild.name}',
+        color=discord.Color.green()
+    )
+    embed.add_field(name='Owner', value=guild.owner.mention)
+    embed.add_field(name='Members', value=guild.member_count)
+    embed.add_field(name='Text Channels', value=len(guild.text_channels))
+    embed.add_field(name='Voice Channels', value=len(guild.voice_channels))
+    embed.add_field(name='Roles', value=len(guild.roles))
+    embed.add_field(name='Created', value=guild.created_at.strftime('%Y-%m-%d'))
+
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+
+    await ctx.send(embed=embed)
+
+# Command: Clear messages
+@bot.command(name='clear', help='Clear messages (Admin only)')
+@commands.has_permissions(manage_messages=True)
+async def clear(ctx: commands.Context, amount: int = 5):
+    await ctx.channel.purge(limit=amount + 1)
+    await ctx.send(f'Cleared {amount} messages!', delete_after=3)
+
+# Error handler
+@clear.error
+async def clear_error(ctx: commands.Context, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send('You need Manage Messages permission to use this!')
+
+# Run the bot
+bot.run(os.getenv('DISCORD_TOKEN'))
+```
+
+Create a `.env` file:
+```bash
+DISCORD_TOKEN=your_token_here
+```
+
+Then run it:
+```bash
+python bot.py
+```
+
+The bot will respond to commands like `!ping`, `!userinfo`, `!serverinfo`, and `!clear`.

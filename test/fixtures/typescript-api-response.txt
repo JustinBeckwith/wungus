@@ -1,0 +1,133 @@
+Here's how to create a REST API with Express and TypeScript:
+
+```typescript
+import express, { Request, Response, NextFunction } from 'express';
+import { body, validationResult } from 'express-validator';
+
+interface User {
+    id: string;
+    username: string;
+    email: string;
+    createdAt: Date;
+}
+
+interface CreateUserRequest {
+    username: string;
+    email: string;
+    password: string;
+}
+
+class UserService {
+    private users: Map<string, User> = new Map();
+
+    async createUser(data: CreateUserRequest): Promise<User> {
+        const id = crypto.randomUUID();
+        const user: User = {
+            id,
+            username: data.username,
+            email: data.email,
+            createdAt: new Date(),
+        };
+        this.users.set(id, user);
+        return user;
+    }
+
+    async getUser(id: string): Promise<User | undefined> {
+        return this.users.get(id);
+    }
+
+    async getAllUsers(): Promise<User[]> {
+        return Array.from(this.users.values());
+    }
+
+    async updateUser(id: string, data: Partial<CreateUserRequest>): Promise<User | undefined> {
+        const user = this.users.get(id);
+        if (!user) return undefined;
+
+        const updated = { ...user, ...data };
+        this.users.set(id, updated);
+        return updated;
+    }
+
+    async deleteUser(id: string): Promise<boolean> {
+        return this.users.delete(id);
+    }
+}
+
+const app = express();
+const userService = new UserService();
+
+app.use(express.json());
+
+// Error handling middleware
+const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong!' });
+};
+
+// Validation middleware
+const validateUser = [
+    body('username').isLength({ min: 3 }).trim().escape(),
+    body('email').isEmail().normalizeEmail(),
+    body('password').isLength({ min: 8 }),
+];
+
+// Routes
+app.post('/api/users', validateUser, async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const user = await userService.createUser(req.body);
+        res.status(201).json(user);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create user' });
+    }
+});
+
+app.get('/api/users', async (req: Request, res: Response) => {
+    const users = await userService.getAllUsers();
+    res.json(users);
+});
+
+app.get('/api/users/:id', async (req: Request, res: Response) => {
+    const user = await userService.getUser(req.params.id);
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+});
+
+app.put('/api/users/:id', validateUser, async (req: Request, res: Response) => {
+    const user = await userService.updateUser(req.params.id, req.body);
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+});
+
+app.delete('/api/users/:id', async (req: Request, res: Response) => {
+    const deleted = await userService.deleteUser(req.params.id);
+    if (!deleted) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(204).send();
+});
+
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
+export { app, userService };
+```
+
+To run this:
+1. Install dependencies: `npm install express express-validator`
+2. Install types: `npm install -D @types/express`
+3. Configure TypeScript in `tsconfig.json`
+4. Run with: `tsx src/server.ts` or compile and run with `node`

@@ -1,0 +1,132 @@
+Here's how to create a Discord-style message component in React:
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import './Message.css';
+
+function formatTimestamp(date) {
+  const now = new Date();
+  const diff = now - date;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return 'just now';
+}
+
+function Message({ author, content, timestamp, avatar, reactions = [], onReact, onReply, onDelete }) {
+  const [showActions, setShowActions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(content);
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    // Save logic here
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedContent(content);
+    setIsEditing(false);
+  };
+
+  return (
+    <div
+      className="message"
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+    >
+      <div className="message-avatar">
+        <img src={avatar} alt={author} />
+      </div>
+
+      <div className="message-content">
+        <div className="message-header">
+          <span className="message-author">{author}</span>
+          <span className="message-timestamp">{formatTimestamp(new Date(timestamp))}</span>
+        </div>
+
+        {isEditing ? (
+          <div className="message-editor">
+            <textarea
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              className="message-input"
+            />
+            <div className="message-editor-actions">
+              <button onClick={handleSaveEdit}>Save</button>
+              <button onClick={handleCancelEdit}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="message-text">
+            {content}
+          </div>
+        )}
+
+        {reactions.length > 0 && (
+          <div className="message-reactions">
+            {reactions.map((reaction, index) => (
+              <button
+                key={index}
+                className="reaction"
+                onClick={() => onReact && onReact(reaction.emoji)}
+              >
+                <span className="reaction-emoji">{reaction.emoji}</span>
+                <span className="reaction-count">{reaction.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showActions && (
+        <div className="message-actions">
+          <button onClick={() => onReact && onReact('👍')}>👍</button>
+          <button onClick={() => onReply && onReply()}>💬</button>
+          <button onClick={handleEdit}>✏️</button>
+          <button onClick={() => onDelete && onDelete()}>🗑️</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageList({ messages, onReact, onReply, onDelete }) {
+  const [sortedMessages, setSortedMessages] = useState([]);
+
+  useEffect(() => {
+    const sorted = [...messages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    setSortedMessages(sorted);
+  }, [messages]);
+
+  return (
+    <div className="message-list">
+      {sortedMessages.map((message) => (
+        <Message
+          key={message.id}
+          author={message.author}
+          content={message.content}
+          timestamp={message.timestamp}
+          avatar={message.avatar}
+          reactions={message.reactions}
+          onReact={(emoji) => onReact(message.id, emoji)}
+          onReply={() => onReply(message.id)}
+          onDelete={() => onDelete(message.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default MessageList;
+```
+
+This creates a Discord-like message interface with reactions, editing, and actions.
